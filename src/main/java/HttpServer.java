@@ -46,7 +46,7 @@ public class HttpServer {
                 readRequest();
                 writeResponse();
             } catch (Throwable t) {
-
+                t.printStackTrace();
             } finally {
                 try {
                     s.close();
@@ -91,7 +91,7 @@ public class HttpServer {
 
             while(true) {
                 buffer = br.readLine();
-                s += buffer;
+                s += buffer + "\r\n";
                 if(buffer == null || buffer.trim().length() == 0) {
                     break;
                 }
@@ -104,8 +104,8 @@ public class HttpServer {
         private void parseRequestToMap(String requestString) {
             if (requestString.substring(0,3).equals("GET")) {
                 requestMap.put("METHOD", "GET");
-                String filePath = requestString.substring(4, requestString.indexOf(" ", 4)); // Подстрока, начиная с пробела после Get
-                                                                                            // И до второго пробела
+                String filePath = requestString.substring(4, requestString.indexOf("\r\n", 4)); // Первая строка запроса без Get
+                filePath = filePath.substring(0, filePath.lastIndexOf(" ")); // Все остальное в этой строке до последнего пробела
                 try {
                     filePath = java.net.URLDecoder.decode(filePath, "UTF-8");
                 } catch (UnsupportedEncodingException e) {
@@ -119,7 +119,7 @@ public class HttpServer {
                 System.out.println(filePath);
             }
             else {
-                requestMap.put("METHOD", "UNNOWN");
+                requestMap.put("METHOD", "UNNOWN"); // Пока без необходимости
             }
         }
 
