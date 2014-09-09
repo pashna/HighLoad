@@ -62,16 +62,22 @@ public class HttpServer {
             byte [] byteArray=null;
             if (requestMap.get("METHOD").equals("GET")) {
                 Path path = Paths.get(Config.dir, requestMap.get("FILE"));
+                System.out.println(new File(path.toString()).exists());
                 try {
                     byteArray = Files.readAllBytes(path);
                     writeHeader(200, new File(Config.dir + requestMap.get("FILE")).length());
 
                 } catch (IOException e) { // exception NoFile
-                    writeHeader(404, -1L);
-                    byteArray = "PAGE NOT FOUND".getBytes();
+                    if (!path.toString().contains("index.html")) {
+                        writeHeader(404, -1L);
+                        byteArray = "PAGE NOT FOUND".getBytes();
+                    } else { // В папке отсутствует index.html
+                        writeHeader(403, -1L);
+                        byteArray = "Forbidden =(".getBytes();
+                    }
                 }
             }
-            else {
+            else { // Unknown method
                 writeHeader(405, -1L);
             }
             os.write(byteArray);
@@ -107,9 +113,10 @@ public class HttpServer {
                 }
                 if (filePath.contains("../")) filePath = "randomUnnownFile123412"; // Если идет вверх по дереву - ставим заранее неизвестный файл
                 if (filePath.contains("?")) filePath = filePath.substring(0, filePath.indexOf("?")); // Если есть строка подзапроса удаляем ее
+                if (filePath.contains("?")) filePath = filePath.substring(0, filePath.indexOf("?")); // С пробелом
                 requestMap.put("FILE", filePath);
                 if (filePath.endsWith("/")) requestMap.put("FILE", filePath+"index.html");
-
+                System.out.println(filePath);
             }
             else {
                 requestMap.put("METHOD", "UNNOWN");
@@ -124,17 +131,23 @@ public class HttpServer {
 
         private void writeHeader(int status, long length) {
             String response = "HTTP/1.1 " + HttpStatusHelper.get(status);
-            if (status == 200) {
+            switch (status) {
+            case 200:
                 response += "\r\nDate: " + getTime() +
-                        "\r\nServer: myBeautyServer v.1.0" +
-                        "\r\n" + getContentType(requestMap.get("FILE")) +
-                        "\r\nContent-Length: " + length +
-                        "\r\nConnection: close";
-
-            } else if (status == 404) {
-
-            } else {
-
+                "\r\nServer: myBeautyServer v.1.0" +
+                "\r\n" + getContentType(requestMap.get("FILE")) +
+                "\r\nContent-Length: " + length +
+                "\r\nConnection: close";
+                break;
+            case 403:
+                response += "\r\nServer: myBeautyServer v.1.0";
+                break;
+            case 404:
+                response += "\r\nServer: myBeautyServer v.1.0";
+                break;
+            case 405:
+                response += "\r\nServer: myBeautyServer v.1.0";
+                break;
             }
             response += "\r\n\r\n";
             System.out.println(response);

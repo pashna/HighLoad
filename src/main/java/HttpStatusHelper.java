@@ -10,6 +10,7 @@ public class HttpStatusHelper {
     static  {
         httpStatusMap = new HashMap<Integer, String>();
         httpStatusMap.put(200, "200 OK");
+        httpStatusMap.put(403, "403 Forbidden");
         httpStatusMap.put(404, "404 Not Found");
         httpStatusMap.put(405, "405 Method Not Allowed");
     }
