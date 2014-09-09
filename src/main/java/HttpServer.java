@@ -33,7 +33,7 @@ public class HttpServer {
         private Socket s;
         private InputStream is;
         private OutputStream os;
-        private Map<String, String> requestMap;
+        private Map<String, String> requestMap = new HashMap<String, String>();
 
         private SocketProcessor(Socket s) throws Throwable {
             this.s = s;
@@ -59,46 +59,26 @@ public class HttpServer {
         }
 
         private void writeResponse() throws Throwable {
-            String response = "";
-            String fileText = "";
-            byte [] byteArray = new byte[Config.byteLength];
+            byte [] byteArray=null;
+            //File file = new File(Config.dir + "/" + requestMap.get("FILE"));
             if (requestMap.get("METHOD").equals("GET")) {
                 Path path = Paths.get(Config.dir, requestMap.get("FILE"));
                 try {
-                    if (getContentType(requestMap.get("FILE")).contains("text")) {
-                        byteArray = Files.readAllBytes(path);
-                        //fileText = new String(fileArray, "UTF-8");
-                        /*response = "HTTP/1.1 200 OK\r\n" +
-                                "Date: " + getTime() + "\r\n" +
-                                "Server: myBeautyServer v.1.0\r\n";
-                        response += getContentType(requestMap.get("FILE"));
-                        response+="Content-Length: " + (new File(path.toString()).length()) + "\r\n" +
-                                "Connection: close\r\n\r\n";
-                        //response += fileText;*/
+                    byteArray = Files.readAllBytes(path);
+                    writeHeader(200, new File(Config.dir + requestMap.get("FILE")).length());
 
-                    } else {
-                        if (!(new File(path.toString()).isFile())) {throw new IOException();}
-                        //BufferedInputStream bis = new BufferedInputStream(new FileInputStream(path.toString()));
-                        //while ((bis.read(byteArray)) != -1){
-                        //}
-                        //bis.close();
-                        byteArray = Files.readAllBytes(path);
-                        response = "HTTP/1.1 200 OK\r\n" +
-                                "Date: " + getTime() + "\r\n" +
-                                "Server: myBeautyServer v.1.0\r\n";
-                        response += getContentType(requestMap.get("FILE"));
-                        response+="Content-Length: " + (new File(path.toString()).length()) + "\r\n" +
-                                "Connection: close\r\n\r\n";
-                    }
-                } catch (IOException e) {
-                    response = "HTTP/1.1 404 NOT FOUND\r\n\r\nNOT FOUND PAGE";
+                } catch (IOException e) { // exception NoFile
+                    writeHeader(404, -1L);
+                    byteArray = "PAGE NOT FOUND".getBytes();
+                    //response = "HTTP/1.1 404 NOT FOUND\r\n\r\nNOT FOUND PAGE";
                 }
             }
             else {
-                response = "405 Method Not Allowed\r\n\r\nAllow: GET\r\n";
+                writeHeader(405, -1L);
+                //response = "405 Method Not Allowed\r\n\r\nAllow: GET\r\n";
             }
-            System.out.println(response);
-            os.write(response.getBytes());
+            //os.write(response.getBytes());
+            //System.out.println();
             os.write(byteArray);
             os.flush();
         }
@@ -141,23 +121,36 @@ public class HttpServer {
         private String getContentType(String file) {
             String type = ContentTypeHelper.get(file.substring(file.lastIndexOf(".") + 1));
             if (type == null) type = ContentTypeHelper.get("");
-            return "Content-Type: " + type + "\r\n";
+            return "Content-Type: " + type;
         }
 
-        private void writeHeader(int status, String content, int length) {
-            String response = "HTTP/1.1 " + HttpStatusHelper.get(status) + "\r\n";
+        private void writeHeader(int status, long length) {
+            String response = "HTTP/1.1 " + HttpStatusHelper.get(status);
             if (status == 200) {
-            response += "HTTP/1.1 " + HttpStatusHelper.get(status) + "\r\n" +
-                    "Date: " + getTime() + "\r\n" +
-                    "Server: myBeautyServer v.1.0\r\n";
-            response += getContentType(requestMap.get("FILE"));
-            response +="Content-Length: " + length
-                    + "\r\nConnection: close\r\n\r\n";
-            } else if (status == 404) {
+            /*    response +="\r\nDate: " + getTime()
+                        + "\r\nServer: myBeautyServer v.1.0";
+                response += getContentType(requestMap.get("FILE"));
+                response +="\r\nContent-Length: " + length;
+                response +="\r\nConnection: close\r\n\r\n";*/
+                response += "\r\nDate: " + getTime() +
+                        "\r\nServer: myBeautyServer v.1.0" +
+                        "\r\n" + getContentType(requestMap.get("FILE")) +
+                        "\r\nContent-Length: " + length +
+                        "\r\nConnection: close";
+                //
 
+            } else if (status == 404) {
+                System.out.println("\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
             } else {// Статус 403
 
             }
+            response += "\r\n\r\n";
+            System.out.println(response);
+            try {
+                os.write(response.getBytes());
+            } catch (IOException e) {
+
+            };
         }
 
 
