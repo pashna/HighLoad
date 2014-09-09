@@ -1,17 +1,14 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.URLEncoder;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * Created by popka 08.09.2014
+ * Created by popka 08.08.2014
  */
 public class HttpServer {
 
@@ -23,8 +20,7 @@ public class HttpServer {
     }
 
     public static void main(String[] args) throws Throwable {
-        ServerSocket ss = new ServerSocket(8001);
-        ContentTypeHelper contentTypeHelper = new ContentTypeHelper();
+        ServerSocket ss = new ServerSocket(Config.port);
         while (true) {
             Socket s = ss.accept();
             System.err.println("Client accepted");
@@ -37,6 +33,7 @@ public class HttpServer {
         private Socket s;
         private InputStream is;
         private OutputStream os;
+        private Map<String, String> requestMap;
 
         private SocketProcessor(Socket s) throws Throwable {
             this.s = s;
@@ -46,8 +43,8 @@ public class HttpServer {
 
         public void run() {
             try {
-                Map requestMap = readInputHeaders();
-                writeResponse(requestMap);
+                readInputHeaders();
+                writeResponse();
             } catch (Throwable t) {
                 /*do nothing*/
             } finally {
@@ -61,20 +58,38 @@ public class HttpServer {
             System.err.println("Client processing finished");
         }
 
-        private void writeResponse(Map<String, String> requestMap) throws Throwable {
-            String response;
+        private void writeResponse() throws Throwable {
+            String response = "";
             String fileText = "";
+            byte [] byteArray = new byte[Config.byteLength];
             if (requestMap.get("METHOD").equals("GET")) {
                 Path path = Paths.get(Config.dir, requestMap.get("FILE"));
                 try {
-                    byte[] fileArray = Files.readAllBytes(path);
-                    fileText = new String(fileArray, "UTF-8");
-                    response = "HTTP/1.1 200 OK\r\n" +
-                            "Date: " + getTime() + "\r\n" +
-                            "Server: myBeautyServer v.1.0\r\n";
-                    response += getContentType(requestMap.get("FILE"));
-                    response+="Content-Length: " + fileText.length() + "\r\n" +
-                            "Connection: close\r\n\r\n";
+                    if (getContentType(requestMap.get("FILE")).contains("text")) {
+                        byteArray = Files.readAllBytes(path);
+                        //fileText = new String(fileArray, "UTF-8");
+                        /*response = "HTTP/1.1 200 OK\r\n" +
+                                "Date: " + getTime() + "\r\n" +
+                                "Server: myBeautyServer v.1.0\r\n";
+                        response += getContentType(requestMap.get("FILE"));
+                        response+="Content-Length: " + (new File(path.toString()).length()) + "\r\n" +
+                                "Connection: close\r\n\r\n";
+                        //response += fileText;*/
+
+                    } else {
+                        if (!(new File(path.toString()).isFile())) {throw new IOException();}
+                        //BufferedInputStream bis = new BufferedInputStream(new FileInputStream(path.toString()));
+                        //while ((bis.read(byteArray)) != -1){
+                        //}
+                        //bis.close();
+                        byteArray = Files.readAllBytes(path);
+                        response = "HTTP/1.1 200 OK\r\n" +
+                                "Date: " + getTime() + "\r\n" +
+                                "Server: myBeautyServer v.1.0\r\n";
+                        response += getContentType(requestMap.get("FILE"));
+                        response+="Content-Length: " + (new File(path.toString()).length()) + "\r\n" +
+                                "Connection: close\r\n\r\n";
+                    }
                 } catch (IOException e) {
                     response = "HTTP/1.1 404 NOT FOUND\r\n\r\nNOT FOUND PAGE";
                 }
@@ -82,13 +97,13 @@ public class HttpServer {
             else {
                 response = "405 Method Not Allowed\r\n\r\nAllow: GET\r\n";
             }
-            String result = response + fileText;
             System.out.println(response);
-            os.write(result.getBytes());
+            os.write(response.getBytes());
+            os.write(byteArray);
             os.flush();
         }
 
-        private Map<String, String> readInputHeaders() throws Throwable {
+        private void readInputHeaders() throws Throwable {
             BufferedReader br = new BufferedReader(new InputStreamReader(is));
             String s="";
             String buffer;
@@ -101,11 +116,11 @@ public class HttpServer {
                 }
             }
             System.out.println(s);
-            return parseRequestToMap(s);
+            parseRequestToMap(s);
         }
 
-        private Map<String, String> parseRequestToMap(String requestString) {
-            Map requestMap = new HashMap<String, String>();
+
+        private void parseRequestToMap(String requestString) {
             if (requestString.substring(0,3).equals("GET")) {
                 requestMap.put("METHOD", "GET");
                 String filePath = requestString.substring(4, requestString.indexOf(" ", 4));
@@ -115,20 +130,37 @@ public class HttpServer {
                     e.printStackTrace();
                 }
                 requestMap.put("FILE", filePath);
-                if (requestMap.get("FILE").equals("/")) requestMap.put("FILE", "index.html");
+                if (filePath.endsWith("/")) requestMap.put("FILE", filePath+"index.html");
 
             }
             else {
                 requestMap.put("METHOD", "UNNOWN");
             }
-            return requestMap;
         }
 
         private String getContentType(String file) {
-            String type = ContentTypeHelper.getContentType(file.substring(file.lastIndexOf(".") + 1));
-            if (type == null) type = ContentTypeHelper.getContentType("");
+            String type = ContentTypeHelper.get(file.substring(file.lastIndexOf(".") + 1));
+            if (type == null) type = ContentTypeHelper.get("");
             return "Content-Type: " + type + "\r\n";
         }
+
+        private void writeHeader(int status, String content, int length) {
+            String response = "HTTP/1.1 " + HttpStatusHelper.get(status) + "\r\n";
+            if (status == 200) {
+            response += "HTTP/1.1 " + HttpStatusHelper.get(status) + "\r\n" +
+                    "Date: " + getTime() + "\r\n" +
+                    "Server: myBeautyServer v.1.0\r\n";
+            response += getContentType(requestMap.get("FILE"));
+            response +="Content-Length: " + length
+                    + "\r\nConnection: close\r\n\r\n";
+            } else if (status == 404) {
+
+            } else {// Статус 403
+
+            }
+        }
+
+
     }
 
 }

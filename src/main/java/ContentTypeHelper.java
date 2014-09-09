@@ -20,7 +20,7 @@ public class ContentTypeHelper {
         contentMap.put("swf", "application/x-shockwave-flash");
     }
 
-    public static String getContentType(String s) {
+    public static String get(String s) {
         return contentMap.get(s);
     }
 
