@@ -13,7 +13,6 @@ public class HttpServer {
         WorkQueue workQueue = new WorkQueue(Config.threadCount);
         while (true) {
             Socket s = ss.accept();
-            System.err.println("Client accepted");
             workQueue.execute(new SocketHandler(s));
         }
     }

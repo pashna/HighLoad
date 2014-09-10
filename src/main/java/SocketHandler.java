@@ -23,6 +23,7 @@ public class SocketHandler implements Runnable {
     }
 
     public void run() {
+        System.err.println("Client accepted");
         try {
             readRequest();
             writeResponse();
@@ -56,11 +57,11 @@ public class SocketHandler implements Runnable {
 
     private void writeResponse() throws Throwable {
         byte [] byteArray=null;
-        if (requestMap.get("METHOD").equals("GET")) {
+        if (isMethodSupported(requestMap.get("METHOD"))) {
             Path path = Paths.get(Config.dir, requestMap.get("FILE"));
-            //System.out.println(new File(path.toString()).exists());
             try {
-                byteArray = Files.readAllBytes(path);
+                if ("GET".equals(requestMap.get("METHOD"))) byteArray = Files.readAllBytes(path); // Для GET - считываем данные,
+                                                                                    // Для HEAD - останется null
                 writeHeader(200, new File(Config.dir + requestMap.get("FILE")).length());
 
             } catch (IOException e) { // exception NoFile
@@ -77,14 +78,14 @@ public class SocketHandler implements Runnable {
             writeHeader(405, -1L);
         }
         if (byteArray != null) os.write(byteArray); //Если что-то записали
-        System.out.println(os);
         os.flush();
     }
 
     private void parseRequestToMap(String requestString) {
-        if (requestString.substring(0,3).equals("GET")) {
-            requestMap.put("METHOD", "GET");
-            String filePath = requestString.substring(4, requestString.indexOf("\r\n", 4)); // Первая строка запроса без Get
+        String method = requestString.substring(0, requestString.indexOf(" "));
+        if (isMethodSupported(method)) {
+            requestMap.put("METHOD", method);
+            String filePath = requestString.substring(method.length()+1, requestString.indexOf("\r\n")); // Первая строка запроса без метода
             filePath = filePath.substring(0, filePath.lastIndexOf(" ")); // Все остальное в этой строке до последнего пробела
             try {
                 filePath = java.net.URLDecoder.decode(filePath, "UTF-8");
@@ -96,7 +97,6 @@ public class SocketHandler implements Runnable {
             if (filePath.contains("?")) filePath = filePath.substring(0, filePath.indexOf("?")); // С пробелом
             requestMap.put("FILE", filePath);
             if (filePath.endsWith("/")) requestMap.put("FILE", filePath+"index.html");
-            System.out.println(filePath);
         }
         else {
             requestMap.put("METHOD", "UNNOWN"); // Пока без необходимости
@@ -141,6 +141,10 @@ public class SocketHandler implements Runnable {
         SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
         dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
         return dateFormat.format(calendar.getTime());
+    }
+
+    private boolean isMethodSupported(String method) {
+        return "GET".equals(method)||"HEAD".equals(method);
     }
 
 }
