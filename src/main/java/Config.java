@@ -6,5 +6,6 @@ public class Config {
     public static String dir = "/home/popka/Tech-Mail/HighLoad/files/";
     public static int byteLength = 5147483;
     public static final String SERVER = "MyBeutyServer";
+    public static int threadCount = 10;
 
 }
