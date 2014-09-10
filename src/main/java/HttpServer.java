@@ -8,13 +8,6 @@ import java.util.*;
  */
 public class HttpServer {
 
-    public static String getTime() {
-        Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
-        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-        return dateFormat.format(calendar.getTime());
-    }
-
     public static void main(String[] args) throws Throwable {
         ServerSocket ss = new ServerSocket(Config.port);
         WorkQueue workQueue = new WorkQueue(Config.threadCount);

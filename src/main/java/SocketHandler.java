@@ -3,8 +3,8 @@ import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
 * Created by popka on 10.09.14.
@@ -38,6 +38,22 @@ public class SocketHandler implements Runnable {
         System.err.println("Client processing finished");
     }
 
+    private void readRequest() throws Throwable {
+        BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        String s="";
+        String buffer;
+
+        while(true) {
+            buffer = br.readLine();
+            s += buffer + "\r\n";
+            if(buffer == null || buffer.trim().length() == 0) {
+                break;
+            }
+        }
+        System.out.println(s);
+        parseRequestToMap(s);
+    }
+
     private void writeResponse() throws Throwable {
         byte [] byteArray=null;
         if (requestMap.get("METHOD").equals("GET")) {
@@ -64,23 +80,6 @@ public class SocketHandler implements Runnable {
         System.out.println(os);
         os.flush();
     }
-
-    private void readRequest() throws Throwable {
-        BufferedReader br = new BufferedReader(new InputStreamReader(is));
-        String s="";
-        String buffer;
-
-        while(true) {
-            buffer = br.readLine();
-            s += buffer + "\r\n";
-            if(buffer == null || buffer.trim().length() == 0) {
-                break;
-            }
-        }
-        System.out.println(s);
-        parseRequestToMap(s);
-    }
-
 
     private void parseRequestToMap(String requestString) {
         if (requestString.substring(0,3).equals("GET")) {
@@ -112,7 +111,7 @@ public class SocketHandler implements Runnable {
 
     private void writeHeader(int status, long length) {
         String response = "HTTP/1.1 " + HttpStatusHelper.get(status) +
-                "\r\nDate: " + HttpServer.getTime() +
+                "\r\nDate: " + getTime() +
                 "\r\nServer: "+Config.SERVER ;
         switch (status) {
         case 200:
@@ -137,5 +136,11 @@ public class SocketHandler implements Runnable {
         };
     }
 
+    private static String getTime() {
+        Calendar calendar = Calendar.getInstance();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return dateFormat.format(calendar.getTime());
+    }
 
 }
