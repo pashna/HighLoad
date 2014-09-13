@@ -1,3 +1,5 @@
+import com.sun.org.apache.xml.internal.serializer.utils.SystemIDResolver;
+
 import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -92,9 +94,16 @@ public class SocketHandler implements Runnable {
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
-            if (filePath.contains("../")) filePath = "randomUnnownFile123412"; // Если идет вверх по дереву - ставим заранее неизвестный файл
-            if (filePath.contains("?")) filePath = filePath.substring(0, filePath.indexOf("?")); // Если есть строка подзапроса удаляем ее
-            if (filePath.contains("?")) filePath = filePath.substring(0, filePath.indexOf("?")); // С пробелом
+            if (filePath.contains("../")) {
+                try{
+                    if (!new File(filePath).getCanonicalPath().contains(Config.dir)) {
+                        filePath = "randomUnnownFile123412"; // Если выходим за пределы Config.dir - ставим заранее несуществующий файл
+                    }
+                } catch (Exception r) {
+                }
+
+            }
+            if (filePath.contains("?")) filePath = filePath.substring(0, filePath.indexOf("?")); // Если есть строка параметров удаляем ее
             requestMap.put("FILE", filePath);
             if (filePath.endsWith("/")) requestMap.put("FILE", filePath+"index.html");
         }
@@ -124,7 +133,7 @@ public class SocketHandler implements Runnable {
         case 404:
             break;
         case 405:
-            response += "\r\nAllow: GET";
+            response += "\r\nAllow: GET,HEAD";
             break;
         }
         response += "\r\n\r\n";
